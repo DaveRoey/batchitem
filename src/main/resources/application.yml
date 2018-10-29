@@ -1,0 +1,24 @@
+server:
+  port: 8080
+spring:
+  datasource:
+    url: jdbc:mysql://118.24.0.221:3306/batch?useSSL=false
+    username: root
+    password: wangyang
+    driver-class-name: com.mysql.jdbc.Driver
+    schema-username: root
+    schema-password: wangyang
+    initialization-mode: never
+    schema: classpath:schema-mysql.sql
+    platform: mysql
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  batch:
+    job:
+      enabled: false
+
+resource:
+  read:
+    path: /data/person.csv
