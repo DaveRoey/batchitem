@@ -1,5 +1,6 @@
 package com.dave.batchitem.config;
 
+import com.dave.batchitem.base.BaseItemReader;
 import com.dave.batchitem.entity.Person;
 import com.dave.batchitem.listener.MyJobListener;
 import org.springframework.batch.core.Job;
@@ -60,6 +61,8 @@ public class SpringBatchConfig {
     private DataSource dataSource;
     @Autowired
     private JobRepository jobRepository;
+    @Autowired
+    private ItemReader<Person> baseItemReader;
 
 
 
@@ -97,11 +100,15 @@ public class SpringBatchConfig {
         return this.stepBuilderFactory.get("sampleStep")
                 .transactionManager(transactionManager)
                 .<Person, Person>chunk(10)
-                .reader(fileReader())
+                .reader(baseItemReader)
                 .writer(customerItemWriter())
                 .build();
     }
 
+    /**
+     * @StepScope SpringBatch的一个后绑定技术，就是在生成Step的时候，才去创建bean，因为这个时候jobparameter才传过来。
+     * @return
+     */
     @Bean
     @StepScope
      public JdbcBatchItemWriter<Person> customerItemWriter() {

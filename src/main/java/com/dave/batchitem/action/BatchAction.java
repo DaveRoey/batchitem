@@ -2,6 +2,7 @@ package com.dave.batchitem.action;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.JobParametersInvalidException;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
@@ -24,10 +25,15 @@ public class BatchAction {
     JobLauncher jobLauncher;
     @Autowired
     Job job;
-    @RequestMapping(value = "/person",method = RequestMethod.GET)
-    public void test(){
+
+    @RequestMapping(value = "/person", method = RequestMethod.GET)
+    public void test() {
         try {
-            jobLauncher.run(job,new JobParameters());
+            JobParametersBuilder jobParametersBuilder = new JobParametersBuilder()
+                    .addString("filePath", "/data/person.csv")
+                    .addString("dlimiter", ",")
+                    .addString("names", "name,gender,age");
+            jobLauncher.run(job, jobParametersBuilder.toJobParameters());
         } catch (Exception e) {
             e.printStackTrace();
         }
