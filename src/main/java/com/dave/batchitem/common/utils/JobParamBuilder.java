@@ -4,6 +4,8 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 
 import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @Author Dave
@@ -14,15 +16,15 @@ public class JobParamBuilder<T> {
     private String filePath;
     private String delimiter = ",";
     private String[] filedNames;
-    private Class<T> bean;
+    private String sql;
 
-    public Class<T> getBean() {
-        return bean;
+
+    public String getSql() {
+        return sql;
     }
 
-    public JobParamBuilder<T> setBean(Class<T> bean) {
-        this.bean = bean;
-        return this;
+    public void setSql(String sql) {
+        this.sql = sql;
     }
 
     public String getFilePath() {
@@ -55,13 +57,24 @@ public class JobParamBuilder<T> {
         return this;
     }
 
+    public JobParamBuilder<T> creatSql(String sql) {
+        this.sql = sql;
+        return this;
+    }
+    public JobParamBuilder<T> setResource(String filePath) {
+        this.filePath = filePath;
+        return this;
+    }
+
 
     public JobParameters build() {
+        String str=Stream.of(filedNames).collect(Collectors.joining(","));
         JobParametersBuilder jobParametersBuilder = new JobParametersBuilder()
                 .addString("filePath", this.filePath)
                 .addString("dlimiter", this.delimiter)
-                .addString("names", Arrays.toString(this.filedNames))
-                .addString("bean",this.bean.toGenericString()) ;
+                .addString("names",str )
+                .addString("sql",this.sql)
+                .addString("date","xcxc");
         return jobParametersBuilder.toJobParameters();
     }
 }

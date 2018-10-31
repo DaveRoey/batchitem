@@ -38,6 +38,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -71,6 +72,8 @@ public class SpringBatchConfig {
     private JobRepository jobRepository;
     @Autowired
     private BaseItemReader baseItemReader;
+    @Autowired
+    private ItemWriter<Map<String,Object>> jdbcBatchItemWriter;
 
 
     @Bean
@@ -109,7 +112,7 @@ public class SpringBatchConfig {
                 .<FieldSet, Map<String, Object>>chunk(10)
                 .reader(baseItemReader)
                 .processor(createProcessor())
-                .writer(customerItemWriter())
+                .writer(jdbcBatchItemWriter)
                 .build();
     }
 
@@ -119,12 +122,12 @@ public class SpringBatchConfig {
      */
     @Bean
     @StepScope
-    public JdbcBatchItemWriter<Map<String, Object>> customerItemWriter() {
+    public ItemWriter<Map<String,Object>> customerItemWriter(@Value("#{jobParameters[sql]}") String sql) {
         return new JdbcBatchItemWriterBuilder<Map<String, Object>>()
-                .itemPreparedStatementSetter(new ColumnMapItemPreparedStatementSetter())
-                .sql("INSERT INTO person(id,name,gender,age) VALUES (null,:name,:gender,:age)")
+                .columnMapped()
+                .sql(sql)
                 .dataSource(dataSource)
-                .itemSqlParameterSourceProvider(map -> new MapSqlParameterSource())
+                .itemSqlParameterSourceProvider(MapSqlParameterSource::new)
                 .build();
     }
 

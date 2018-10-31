@@ -31,18 +31,21 @@ public class BatchAction {
     @RequestMapping(value = "/person", method = RequestMethod.GET)
     public void test() {
         try {
-            JobParametersBuilder jobParametersBuilder = new JobParametersBuilder()
+            /*JobParametersBuilder jobParametersBuilder = new JobParametersBuilder()
                     .addString("filePath", "/data/person.csv")
                     .addString("dlimiter", ",")
                     .addString("names", "name,gender,age")
-                    .addString("date", "2018-10-22");
-            jobLauncher.run(job, jobParametersBuilder.toJobParameters());
+                    .addString("date", "2018-10-20");*/
 
-            /*JobParameters jobParameters=new JobParamBuilder<Person>()
+
+            JobParameters jobParameters=new JobParamBuilder<Person>()
                     .setDelimiter(",")
-                    .setBean(Person.class)
-                    .setFiledNames("aa","bb")
-                    .build();*/
+                    .setResource("/data/person.csv")
+                    .setFiledNames("name,gender,age")
+                    .creatSql("INSERT INTO person(id,name,gender,age) VALUES (null,:name,:gender,:age)")
+                    .build();
+            jobLauncher.run(job, jobParameters);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
