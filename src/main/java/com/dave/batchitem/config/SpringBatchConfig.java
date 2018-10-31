@@ -16,22 +16,28 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.batch.core.repository.support.SimpleJobRepository;
 import org.springframework.batch.item.ExecutionContext;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
+import org.springframework.batch.item.database.ItemSqlParameterSourceProvider;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.item.database.support.ColumnMapItemPreparedStatementSetter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
+import org.springframework.batch.item.file.transform.DefaultFieldSet;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.batch.item.file.transform.FieldSet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -41,6 +47,8 @@ import org.springframework.transaction.support.DefaultTransactionStatus;
 
 import javax.sql.DataSource;
 import java.time.Period;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by Dave on 2018/10/29
@@ -54,16 +62,15 @@ public class SpringBatchConfig {
     private String path;
 
     @Autowired
-    private  JobBuilderFactory jobBuilderFactory;
+    private JobBuilderFactory jobBuilderFactory;
     @Autowired
-    private  StepBuilderFactory stepBuilderFactory;
+    private StepBuilderFactory stepBuilderFactory;
     @Autowired
     private DataSource dataSource;
     @Autowired
     private JobRepository jobRepository;
     @Autowired
-    private ItemReader<Person> baseItemReader;
-
+    private BaseItemReader baseItemReader;
 
 
     @Bean
@@ -76,7 +83,7 @@ public class SpringBatchConfig {
 
 
     @Bean
-    JobRepository createJobRepository(DataSource dataSource,PlatformTransactionManager transactionManager) throws Exception {
+    JobRepository createJobRepository(DataSource dataSource, PlatformTransactionManager transactionManager) throws Exception {
         JobRepositoryFactoryBean factory = new JobRepositoryFactoryBean();
         factory.setDataSource(dataSource);
         factory.setTransactionManager(transactionManager);
@@ -99,37 +106,39 @@ public class SpringBatchConfig {
     public Step sampleStep(PlatformTransactionManager transactionManager) {
         return this.stepBuilderFactory.get("sampleStep")
                 .transactionManager(transactionManager)
-                .<Person, Person>chunk(10)
+                .<FieldSet, Map<String, Object>>chunk(10)
                 .reader(baseItemReader)
+                .processor(createProcessor())
                 .writer(customerItemWriter())
                 .build();
     }
 
     /**
-     * @StepScope SpringBatch的一个后绑定技术，就是在生成Step的时候，才去创建bean，因为这个时候jobparameter才传过来。
      * @return
+     * @StepScope SpringBatch的一个后绑定技术，就是在生成Step的时候，才去创建bean，因为这个时候jobparameter才传过来。
      */
     @Bean
     @StepScope
-     public JdbcBatchItemWriter<Person> customerItemWriter() {
-        return new JdbcBatchItemWriterBuilder<Person>()
-                .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
+    public JdbcBatchItemWriter<Map<String, Object>> customerItemWriter() {
+        return new JdbcBatchItemWriterBuilder<Map<String, Object>>()
+                .itemPreparedStatementSetter(new ColumnMapItemPreparedStatementSetter())
                 .sql("INSERT INTO person(id,name,gender,age) VALUES (null,:name,:gender,:age)")
                 .dataSource(dataSource)
+                .itemSqlParameterSourceProvider(map -> new MapSqlParameterSource())
                 .build();
     }
 
     @Bean
-    ItemReader<Person> fileReader(){
-        FlatFileItemReader<Person> reader=new FlatFileItemReader<Person>();
+    ItemReader<Person> fileReader() {
+        FlatFileItemReader<Person> reader = new FlatFileItemReader<Person>();
         reader.setResource(createResource());
 
-        DefaultLineMapper<Person> lineMapper=new DefaultLineMapper<>();
-        BeanWrapperFieldSetMapper<Person> mapper=new BeanWrapperFieldSetMapper<Person>();
+        DefaultLineMapper<Person> lineMapper = new DefaultLineMapper<>();
+        BeanWrapperFieldSetMapper<Person> mapper = new BeanWrapperFieldSetMapper<Person>();
         mapper.setTargetType(Person.class);
         DelimitedLineTokenizer lineTokenizer = new DelimitedLineTokenizer();
         lineTokenizer.setDelimiter(",");
-        lineTokenizer.setNames("name","gender","age");
+        lineTokenizer.setNames("name", "gender", "age");
         lineMapper.setFieldSetMapper(mapper);
         lineMapper.setLineTokenizer(lineTokenizer);
         reader.setLineMapper(lineMapper);
@@ -137,7 +146,20 @@ public class SpringBatchConfig {
     }
 
     @Bean
-    Resource createResource(){
+    ItemProcessor<FieldSet, Map<String, Object>> createProcessor() {
+        return o -> {
+            Map<String, Object> map = new HashMap<>();
+            String[] names = o.getNames();
+            for (String key : names) {
+                String value = o.readString(key);
+                map.put(key, value);
+            }
+            return map;
+        };
+    }
+
+    @Bean
+    Resource createResource() {
         return new ClassPathResource(getPath());
     }
 

@@ -1,5 +1,7 @@
 package com.dave.batchitem.action;
 
+import com.dave.batchitem.common.utils.JobParamBuilder;
+import com.dave.batchitem.entity.Person;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
@@ -32,8 +34,15 @@ public class BatchAction {
             JobParametersBuilder jobParametersBuilder = new JobParametersBuilder()
                     .addString("filePath", "/data/person.csv")
                     .addString("dlimiter", ",")
-                    .addString("names", "name,gender,age");
+                    .addString("names", "name,gender,age")
+                    .addString("date", "2018-10-22");
             jobLauncher.run(job, jobParametersBuilder.toJobParameters());
+
+            /*JobParameters jobParameters=new JobParamBuilder<Person>()
+                    .setDelimiter(",")
+                    .setBean(Person.class)
+                    .setFiledNames("aa","bb")
+                    .build();*/
         } catch (Exception e) {
             e.printStackTrace();
         }
